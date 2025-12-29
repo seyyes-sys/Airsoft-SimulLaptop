@@ -1,0 +1,15 @@
+# Requirements pour l'application Airsoft
+# Python 3.7+
+
+# Tkinter est inclus par défaut avec Python
+# PIL/Pillow pour afficher les images
+Pillow>=10.0.0
+
+# pyttsx3 pour les annonces vocales
+pyttsx3>=2.90
+
+# PyMuPDF pour afficher les PDF
+PyMuPDF>=1.23.0
+
+# OpenCV pour lire les vidéos
+opencv-python>=4.8.0

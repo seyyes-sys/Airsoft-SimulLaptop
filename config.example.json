@@ -1,0 +1,9 @@
+{
+    "code_bureau": "111111",
+    "code_dossier": "222222",
+    "code_missile": "333333",
+    "admin_password": "admin123",
+    "missile_name": "R-73",
+    "missile_timer_default": 1200,
+    "missile_timer_max": 1800
+}
