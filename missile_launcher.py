@@ -19,6 +19,7 @@ class MissileLauncher:
         self.desktop_class = desktop_class
         self.config = ConfigManager()
         self.launch_in_progress = False
+        self.launch_cancelled = False
         
         self.frame = tk.Frame(master, bg='#0a0a0a')
         self.frame.pack(fill=tk.BOTH, expand=True)
@@ -130,6 +131,45 @@ class MissileLauncher:
         self.status_text.insert(1.0, ">>> Система готова\n>>> Ожидание команды запуска...\n")
         self.status_text.config(state=tk.DISABLED)
         
+        # Zone d'annulation (cachée par défaut)
+        self.cancel_frame = tk.Frame(main_area, bg='#0a0a0a')
+        
+        tk.Label(
+            self.cancel_frame,
+            text="Код отмены:",
+            font=("Arial", 14, "bold"),
+            fg='#ff0000',
+            bg='#0a0a0a'
+        ).pack(side=tk.LEFT, padx=10)
+        
+        self.cancel_code_var = tk.StringVar()
+        self.cancel_entry = tk.Entry(
+            self.cancel_frame,
+            textvariable=self.cancel_code_var,
+            font=("Courier", 16, "bold"),
+            width=10,
+            justify='center',
+            bg='#2a2a2a',
+            fg='#ff0000',
+            insertbackground='#ff0000'
+        )
+        self.cancel_entry.pack(side=tk.LEFT, padx=10)
+        
+        self.cancel_button = tk.Button(
+            self.cancel_frame,
+            text="ОТМЕНИТЬ ЗАПУСК",
+            font=("Arial", 14, "bold"),
+            bg='#ff0000',
+            fg='white',
+            activebackground='#ff4444',
+            width=20,
+            height=2,
+            command=self.try_cancel_launch,
+            relief=tk.RAISED,
+            bd=5
+        )
+        self.cancel_button.pack(side=tk.LEFT, padx=10)
+        
         # Boutons de contrôle
         controls_frame = tk.Frame(main_area, bg='#0a0a0a')
         controls_frame.pack(pady=20)
@@ -207,7 +247,12 @@ class MissileLauncher:
     def initiate_launch(self):
         """Lance la séquence de lancement"""
         self.launch_in_progress = True
+        self.launch_cancelled = False
         self.launch_button.config(state=tk.DISABLED, bg='#666666')
+        
+        # Afficher la zone d'annulation
+        self.cancel_frame.pack(pady=10)
+        self.cancel_entry.focus()
         
         # Lance la séquence dans un thread
         thread = threading.Thread(target=self.launch_sequence)
@@ -245,6 +290,16 @@ class MissileLauncher:
         
         # Décompte
         for i in range(timer_seconds, 0, -1):
+            # Vérifier si le lancement a été annulé
+            if self.launch_cancelled:
+                self.add_status_message("\n>>> ⚠️ ЗАПУСК ОТМЕНЕН ⚠️\n")
+                self.add_status_message(">>> Последовательность отмены подтверждена\n")
+                self.add_status_message(">>> Разоружение ракеты в процессе...\n")
+                time.sleep(1)
+                self.add_status_message(">>> Система возвращена в режим ожидания\n")
+                self.master.after(0, self.reset_after_cancel)
+                return
+            
             # Bip sonore à chaque seconde
             try:
                 if platform.system() == 'Windows':
@@ -341,8 +396,41 @@ class MissileLauncher:
         
         self.master.after(0, update)
     
+    def try_cancel_launch(self):
+        """Tente d'annuler le lancement avec le code"""
+        if not self.launch_in_progress:
+            return
+        
+        entered_code = self.cancel_code_var.get()
+        correct_code = self.config.get("code_annulation", "999999")
+        
+        if entered_code == correct_code:
+            self.launch_cancelled = True
+            self.cancel_code_var.set("")
+        else:
+            messagebox.showerror(
+                "КОД НЕВЕРЕН",
+                "❌ Неправильный код отмены!\n\nЗапуск продолжается..."
+            )
+            self.cancel_code_var.set("")
+            self.cancel_entry.focus()
+    
+    def reset_after_cancel(self):
+        """Réinitialise l'interface après annulation"""
+        self.cancel_frame.pack_forget()
+        self.launch_button.config(state=tk.NORMAL, bg='#ff0000')
+        self.launch_in_progress = False
+        messagebox.showinfo(
+            "ОТМЕНА УСПЕШНА",
+            "✓ Запуск ракеты успешно отменен!\n\n" +
+            "Система разоружена."
+        )
+    
     def show_mission_complete(self):
         """Affiche le message de fin de mission"""
+        # Cacher la zone d'annulation
+        self.cancel_frame.pack_forget()
+        
         messagebox.showinfo(
             "МИССИЯ ВЫПОЛНЕНА",
             "✓ Ракета успешно запущена!\n\n" +

@@ -119,6 +119,24 @@ class AdminPanel:
             justify='center'
         ).grid(row=2, column=1, padx=10, pady=10)
         
+        # Code Annulation
+        tk.Label(
+            codes_frame,
+            text="Code Annulation (6 chiffres):",
+            font=("Arial", 12),
+            fg='#ff8800',
+            bg='#3a3a3a'
+        ).grid(row=3, column=0, padx=10, pady=10, sticky='e')
+        
+        self.code_annulation_var = tk.StringVar(value=self.config.get("code_annulation", "999999"))
+        tk.Entry(
+            codes_frame,
+            textvariable=self.code_annulation_var,
+            font=("Courier", 14),
+            width=15,
+            justify='center'
+        ).grid(row=3, column=1, padx=10, pady=10)
+        
         # Configuration du missile
         missile_frame = tk.LabelFrame(
             main_frame,
@@ -356,6 +374,7 @@ class AdminPanel:
         code_bureau = self.code_bureau_var.get().strip()
         code_dossier = self.code_dossier_var.get().strip()
         code_missile = self.code_missile_var.get().strip()
+        code_annulation = self.code_annulation_var.get().strip()
         missile_name = self.missile_var.get().strip()
         timer_default = self.timer_var.get().strip()
         new_password = self.password_var.get().strip()
@@ -364,7 +383,8 @@ class AdminPanel:
         codes_to_validate = [
             ("Bureau", code_bureau),
             ("Dossier", code_dossier),
-            ("Missile", code_missile)
+            ("Missile", code_missile),
+            ("Annulation", code_annulation)
         ]
         
         for name, code in codes_to_validate:
@@ -390,6 +410,7 @@ class AdminPanel:
         self.config.set("code_bureau", code_bureau)
         self.config.set("code_dossier", code_dossier)
         self.config.set("code_missile", code_missile)
+        self.config.set("code_annulation", code_annulation)
         self.config.set("missile_name", missile_name)
         self.config.set("missile_timer_default", timer_val)
         
@@ -403,6 +424,7 @@ class AdminPanel:
             f"Code Bureau: {code_bureau}\n" +
             f"Code Dossier: {code_dossier}\n" +
             f"Code Missile: {code_missile}\n" +
+            f"Code Annulation: {code_annulation}\n" +
             f"Missile: {missile_name}\n" +
             f"Minuteur: {timer_val}s"
         )
@@ -419,6 +441,7 @@ class AdminPanel:
             self.config.set("code_bureau", "111111")
             self.config.set("code_dossier", "222222")
             self.config.set("code_missile", "333333")
+            self.config.set("code_annulation", "999999")
             self.config.set("missile_name", "RS-28 Sarmat")
             self.config.set("missile_timer_default", 1200)
             self.config.set("admin_password", "admin123")
@@ -426,6 +449,7 @@ class AdminPanel:
             self.code_bureau_var.set("111111")
             self.code_dossier_var.set("222222")
             self.code_missile_var.set("333333")
+            self.code_annulation_var.set("999999")
             self.missile_var.set("RS-28 Sarmat")
             self.timer_var.set("1200")
             self.password_var.set("")
