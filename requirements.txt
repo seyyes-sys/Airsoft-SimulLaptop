@@ -11,5 +11,5 @@ pyttsx3>=2.90
 # PyMuPDF pour afficher les PDF
 PyMuPDF>=1.23.0
 
-# OpenCV pour lire les vidéos
-opencv-python>=4.8.0
+# OpenCV pour lire les vidéos (headless = plus compatible, pas de dépendances GUI)
+opencv-python-headless>=4.8.0

@@ -13,18 +13,37 @@ from PIL import Image, ImageTk
 import platform
 import threading
 import time
+import subprocess
+import sys
 
-try:
-    import fitz  # PyMuPDF
-    PYMUPDF_AVAILABLE = True
-except ImportError:
-    PYMUPDF_AVAILABLE = False
+def _test_import(module_name):
+    """Teste si un module peut être importé sans crash (Illegal Instruction)"""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", f"import {module_name}"],
+            capture_output=True, timeout=10
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
 
-try:
-    import cv2
-    OPENCV_AVAILABLE = True
-except ImportError:
-    OPENCV_AVAILABLE = False
+# Test PyMuPDF
+PYMUPDF_AVAILABLE = False
+if _test_import("fitz"):
+    try:
+        import fitz
+        PYMUPDF_AVAILABLE = True
+    except Exception:
+        pass
+
+# Test OpenCV
+OPENCV_AVAILABLE = False
+if _test_import("cv2"):
+    try:
+        import cv2
+        OPENCV_AVAILABLE = True
+    except Exception:
+        pass
 
 class FileViewer:
     def __init__(self, master, desktop_class, documents_folder):

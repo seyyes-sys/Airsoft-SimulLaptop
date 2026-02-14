@@ -71,7 +71,22 @@ python3 -m venv venv
 log_info "Installation des packages dans l'environnement virtuel..."
 source venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# D'abord tenter l'installation normale
+pip install -r requirements.txt || {
+    log_warn "Erreur d'installation, tentative module par module..."
+    pip install "Pillow>=10.0.0" || log_warn "Pillow non installé"
+    pip install "pyttsx3>=2.90" || log_warn "pyttsx3 non installé"
+    pip install "PyMuPDF>=1.23.0" || log_warn "PyMuPDF non installé"
+    pip install "opencv-python-headless>=4.8.0" || log_warn "OpenCV non installé, les vidéos ne seront pas lues"
+}
+
+# Vérifier que les modules critiques fonctionnent (détecte les 'Illegal instruction')
+log_info "Vérification des modules installés..."
+python3 -c "import PIL; print('  Pillow: OK')" || log_warn "Pillow ne fonctionne pas"
+python3 -c "import fitz; print('  PyMuPDF: OK')" || log_warn "PyMuPDF ne fonctionne pas (les PDF ne seront pas affichés)"
+python3 -c "import cv2; print('  OpenCV: OK')" || log_warn "OpenCV ne fonctionne pas (les vidéos ne seront pas lues)"
+
 deactivate
 
 # Créer le script de démarrage
@@ -81,22 +96,39 @@ cat > "$HOME/start_airsoft.sh" << 'EOFSCRIPT'
 # Script de démarrage de l'application Airsoft
 
 # Attendre que le bureau soit prêt
-sleep 5
+sleep 3
 
 # Désactiver l'économiseur d'écran
-xset s off
-xset -dpms
-xset s noblank
+xset s off 2>/dev/null
+xset -dpms 2>/dev/null
+xset s noblank 2>/dev/null
 
 # Lancer l'application avec l'environnement virtuel
 cd ~/airsoft-simullaptop
 source venv/bin/activate
+
+# Désactiver les instructions AVX si problème de compatibilité
+export OPENCV_LOG_LEVEL=ERROR
+export OPENBLAS_CORETYPE=ARMV8
+
 python main.py
 
-# En cas d'erreur, attendre avant de fermer
+# En cas d'erreur, afficher les détails et attendre
 if [ $? -ne 0 ]; then
-    echo "Erreur lors du lancement de l'application"
-    sleep 10
+    echo ""
+    echo "=== Erreur lors du lancement de l'application ==="
+    echo "Diagnostic en cours..."
+    echo ""
+    python3 -c "import tkinter; print('  tkinter: OK')" 2>&1 || echo "  tkinter: ERREUR"
+    python3 -c "import PIL; print('  Pillow: OK')" 2>&1 || echo "  Pillow: ERREUR"
+    python3 -c "import fitz; print('  PyMuPDF: OK')" 2>&1 || echo "  PyMuPDF: ERREUR (crash probable)"
+    python3 -c "import cv2; print('  OpenCV: OK')" 2>&1 || echo "  OpenCV: ERREUR (crash probable)"
+    echo ""
+    echo "Si un module affiche ERREUR/crash, reinstallez-le :"
+    echo "  cd ~/airsoft-simullaptop && source venv/bin/activate"
+    echo "  pip install --force-reinstall opencv-python-headless PyMuPDF"
+    echo ""
+    sleep 30
 fi
 EOFSCRIPT
 
