@@ -12,6 +12,46 @@ import time
 import threading
 import platform
 import os
+import struct
+import math
+import subprocess
+import tempfile
+
+# Générer un fichier WAV de bip court pour Linux (évite speaker-test)
+def _generate_beep_wav(filepath, frequency=800, duration_ms=100, volume=0.5):
+    """Génère un fichier WAV contenant un bip sinusoïdal"""
+    sample_rate = 22050
+    n_samples = int(sample_rate * duration_ms / 1000)
+    import wave
+    with wave.open(filepath, 'w') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        for i in range(n_samples):
+            value = int(volume * 32767 * math.sin(2 * math.pi * frequency * i / sample_rate))
+            wav.writeframes(struct.pack('<h', value))
+
+# Fichier bip pré-généré (créé une seule fois)
+_BEEP_FILE = None
+_SIREN_LOW_FILE = None
+_SIREN_HIGH_FILE = None
+
+def _get_beep_file():
+    global _BEEP_FILE
+    if _BEEP_FILE is None or not os.path.exists(_BEEP_FILE):
+        _BEEP_FILE = os.path.join(tempfile.gettempdir(), 'airsoft_beep.wav')
+        _generate_beep_wav(_BEEP_FILE, frequency=800, duration_ms=100)
+    return _BEEP_FILE
+
+def _get_siren_files():
+    global _SIREN_LOW_FILE, _SIREN_HIGH_FILE
+    if _SIREN_LOW_FILE is None or not os.path.exists(_SIREN_LOW_FILE):
+        _SIREN_LOW_FILE = os.path.join(tempfile.gettempdir(), 'airsoft_siren_low.wav')
+        _generate_beep_wav(_SIREN_LOW_FILE, frequency=600, duration_ms=400, volume=0.7)
+    if _SIREN_HIGH_FILE is None or not os.path.exists(_SIREN_HIGH_FILE):
+        _SIREN_HIGH_FILE = os.path.join(tempfile.gettempdir(), 'airsoft_siren_high.wav')
+        _generate_beep_wav(_SIREN_HIGH_FILE, frequency=1100, duration_ms=400, volume=0.7)
+    return _SIREN_LOW_FILE, _SIREN_HIGH_FILE
 
 class MissileLauncher:
     def __init__(self, master, desktop_class):
@@ -306,8 +346,12 @@ class MissileLauncher:
                     import winsound
                     winsound.Beep(800, 100)  # Fréquence 800Hz, durée 100ms
                 else:
-                    # Linux/Raspberry Pi: utiliser beep via subprocess
-                    os.system('(speaker-test -t sine -f 800 >/dev/null 2>&1 &); sleep 0.1; killall speaker-test >/dev/null 2>&1')
+                    # Linux: jouer un fichier WAV court avec aplay (propre, sans chevauchement)
+                    beep_file = _get_beep_file()
+                    subprocess.Popen(
+                        ['aplay', '-q', beep_file],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
             except:
                 pass
             
@@ -323,8 +367,12 @@ class MissileLauncher:
                         engine.say(f"{minutes_remaining} minutes remaining")
                         engine.runAndWait()
                     else:
-                        # Linux/Raspberry Pi: utiliser espeak directement
-                        os.system(f'espeak "{minutes_remaining} minutes remaining" 2>/dev/null &')
+                        # Linux/Raspberry Pi: espeak synchrone pour ne pas chevaucher les bips
+                        subprocess.run(
+                            ['espeak', '-s', '160', f'{minutes_remaining} minutes remaining'],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            timeout=5
+                        )
                 except Exception as e:
                     print(f"Erreur voix: {e}")
                     pass
@@ -346,10 +394,17 @@ class MissileLauncher:
                     for freq in range(1200, 400, -100):
                         winsound.Beep(freq, 50)
             else:
-                # Linux/Raspberry Pi: sirène alternative
+                # Linux/Raspberry Pi: sirène avec fichiers WAV
+                siren_low, siren_high = _get_siren_files()
                 for _ in range(3):
-                    os.system('(speaker-test -t sine -f 800 >/dev/null 2>&1 &); sleep 0.5; killall speaker-test >/dev/null 2>&1')
-                    os.system('(speaker-test -t sine -f 1200 >/dev/null 2>&1 &); sleep 0.5; killall speaker-test >/dev/null 2>&1')
+                    subprocess.run(
+                        ['aplay', '-q', siren_low],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                    subprocess.run(
+                        ['aplay', '-q', siren_high],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
         except:
             pass
         
@@ -365,8 +420,12 @@ class MissileLauncher:
                 engine.say("Missile launched! Launch successful!")
                 engine.runAndWait()
             else:
-                # Linux/Raspberry Pi: utiliser espeak avec emphase
-                os.system('espeak -s 150 -a 200 "Missile launched! Launch successful!" 2>/dev/null &')
+                # Linux/Raspberry Pi: espeak synchrone
+                subprocess.run(
+                    ['espeak', '-s', '150', '-a', '200', 'Missile launched! Launch successful!'],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=10
+                )
         except Exception as e:
             print(f"Erreur voix lancement: {e}")
             pass
