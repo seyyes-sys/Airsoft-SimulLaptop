@@ -174,16 +174,30 @@ class AdminPanel:
             bg='#3a3a3a'
         ).grid(row=1, column=0, padx=10, pady=10, sticky='e')
         
-        self.timer_var = tk.StringVar(value=str(self.config.get("missile_timer_default", 1200)))
+        self.timer_var = tk.StringVar(value=str(self.config.get("missile_timer_default", 2400)))
         tk.Spinbox(
             missile_frame,
             textvariable=self.timer_var,
             from_=10,
-            to=1800,
+            to=3600,
             font=("Arial", 12),
             width=10,
             justify='center'
         ).grid(row=1, column=1, padx=10, pady=10, sticky='w')
+        
+        # Case à cocher pour verrouiller le timer
+        self.timer_locked_var = tk.BooleanVar(value=self.config.get("missile_timer_locked", False))
+        tk.Checkbutton(
+            missile_frame,
+            text="Verrouiller le timer (empêcher les joueurs de le modifier)",
+            variable=self.timer_locked_var,
+            font=("Arial", 11),
+            fg='#ff8800',
+            bg='#3a3a3a',
+            selectcolor='#2a2a2a',
+            activebackground='#3a3a3a',
+            activeforeground='#ff8800'
+        ).grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky='w')
         
         # Suggestions de noms de missiles
         suggestions = [
@@ -200,7 +214,7 @@ class AdminPanel:
             font=("Arial", 10, "italic"),
             fg='#aaaaaa',
             bg='#3a3a3a'
-        ).grid(row=2, column=0, padx=10, pady=5, sticky='ne')
+        ).grid(row=3, column=0, padx=10, pady=5, sticky='ne')
         
         suggestions_text = "\n".join(suggestions)
         tk.Label(
@@ -210,7 +224,7 @@ class AdminPanel:
             fg='#aaaaaa',
             bg='#3a3a3a',
             justify=tk.LEFT
-        ).grid(row=2, column=1, padx=10, pady=5, sticky='w')
+        ).grid(row=3, column=1, padx=10, pady=5, sticky='w')
         
         # Configuration du mot de passe admin
         password_frame = tk.LabelFrame(
@@ -377,6 +391,7 @@ class AdminPanel:
         code_annulation = self.code_annulation_var.get().strip()
         missile_name = self.missile_var.get().strip()
         timer_default = self.timer_var.get().strip()
+        timer_locked = self.timer_locked_var.get()
         new_password = self.password_var.get().strip()
         
         # Validation des codes
@@ -399,8 +414,8 @@ class AdminPanel:
         # Validation du timer
         try:
             timer_val = int(timer_default)
-            if timer_val < 10 or timer_val > 1800:
-                messagebox.showerror("Erreur", "Le minuteur doit être entre 10 et 1800 secondes (30 min)")
+            if timer_val < 10 or timer_val > 3600:
+                messagebox.showerror("Erreur", "Le minuteur doit être entre 10 et 3600 secondes (60 min)")
                 return
         except:
             messagebox.showerror("Erreur", "Le minuteur doit être un nombre valide")
@@ -413,6 +428,7 @@ class AdminPanel:
         self.config.set("code_annulation", code_annulation)
         self.config.set("missile_name", missile_name)
         self.config.set("missile_timer_default", timer_val)
+        self.config.set("missile_timer_locked", timer_locked)
         
         if new_password:
             self.config.set("admin_password", new_password)
@@ -426,7 +442,8 @@ class AdminPanel:
             f"Code Missile: {code_missile}\n" +
             f"Code Annulation: {code_annulation}\n" +
             f"Missile: {missile_name}\n" +
-            f"Minuteur: {timer_val}s"
+            f"Minuteur: {timer_val}s\n" +
+            f"Timer verrouillé: {'Oui' if timer_locked else 'Non'}"
         )
     
     def reset_configuration(self):
@@ -443,7 +460,8 @@ class AdminPanel:
             self.config.set("code_missile", "333333")
             self.config.set("code_annulation", "999999")
             self.config.set("missile_name", "RS-28 Sarmat")
-            self.config.set("missile_timer_default", 1200)
+            self.config.set("missile_timer_default", 2400)
+            self.config.set("missile_timer_locked", False)
             self.config.set("admin_password", "admin123")
             
             self.code_bureau_var.set("111111")
@@ -451,7 +469,8 @@ class AdminPanel:
             self.code_missile_var.set("333333")
             self.code_annulation_var.set("999999")
             self.missile_var.set("RS-28 Sarmat")
-            self.timer_var.set("1200")
+            self.timer_var.set("2400")
+            self.timer_locked_var.set(False)
             self.password_var.set("")
             
             messagebox.showinfo("Succès", "Configuration réinitialisée")

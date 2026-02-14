@@ -60,6 +60,7 @@ class MissileLauncher:
         self.config = ConfigManager()
         self.launch_in_progress = False
         self.launch_cancelled = False
+        self.remaining_time = None  # Temps restant après annulation
         
         self.frame = tk.Frame(master, bg='#0a0a0a')
         self.frame.pack(fill=tk.BOTH, expand=True)
@@ -140,11 +141,11 @@ class MissileLauncher:
         )
         timer_label.pack(side=tk.LEFT, padx=5)
         
-        self.timer_var = tk.StringVar(value=str(self.config.get("missile_timer_default", 1200)))
+        self.timer_var = tk.StringVar(value=str(self.config.get("missile_timer_default", 2400)))
         self.timer_spinbox = tk.Spinbox(
             timer_frame,
             from_=10,
-            to=1800,
+            to=3600,
             textvariable=self.timer_var,
             font=("Courier", 12, "bold"),
             width=8,
@@ -155,6 +156,18 @@ class MissileLauncher:
             bd=3
         )
         self.timer_spinbox.pack(side=tk.LEFT, padx=5)
+        
+        # Verrouiller le timer si configuré
+        if self.config.get("missile_timer_locked", False):
+            self.timer_spinbox.config(state='disabled')
+            lock_label = tk.Label(
+                timer_frame,
+                text="🔒",
+                font=("Arial", 14),
+                fg='#ff4444',
+                bg='#1a1a1a'
+            )
+            lock_label.pack(side=tk.LEFT, padx=5)
         
         # Zone de statut de lancement
         self.status_text = tk.Text(
@@ -303,15 +316,15 @@ class MissileLauncher:
         """Séquence de lancement avec décompte configurable"""
         missile_name = self.config.get("missile_name", "RS-28 Sarmat")
         
-        # Récupérer le minuteur
+        # Récupérer le minuteur (utiliser le temps restant si relancement après annulation)
         try:
             timer_seconds = int(self.timer_var.get())
             if timer_seconds < 10:
                 timer_seconds = 10
-            elif timer_seconds > 1800:
-                timer_seconds = 1800
+            elif timer_seconds > 3600:
+                timer_seconds = 3600
         except:
-            timer_seconds = 1200
+            timer_seconds = 2400
         
         messages = [
             f">>> Инициализация системы запуска {missile_name}...\n",
@@ -332,11 +345,12 @@ class MissileLauncher:
         for i in range(timer_seconds, 0, -1):
             # Vérifier si le lancement a été annulé
             if self.launch_cancelled:
-                self.add_status_message("\n>>> ⚠️ ЗАПУСК ОТМЕНЕН ⚠️\n")
+                self.remaining_time = i  # Sauvegarder le temps restant
+                self.add_status_message(f"\n>>> ⚠️ ЗАПУСК ОТМЕНЕН — осталось {i} сек. ⚠️\n")
                 self.add_status_message(">>> Последовательность отмены подтверждена\n")
-                self.add_status_message(">>> Разоружение ракеты в процессе...\n")
+                self.add_status_message(">>> Таймер приостановлен — возможен повторный запуск\n")
                 time.sleep(1)
-                self.add_status_message(">>> Система возвращена в режим ожидания\n")
+                self.add_status_message(">>> Система в режиме ожидания\n")
                 self.master.after(0, self.reset_after_cancel)
                 return
             
@@ -475,14 +489,23 @@ class MissileLauncher:
             self.cancel_entry.focus()
     
     def reset_after_cancel(self):
-        """Réinitialise l'interface après annulation"""
+        """Réinitialise l'interface après annulation en conservant le temps restant"""
         self.cancel_frame.pack_forget()
         self.launch_button.config(state=tk.NORMAL, bg='#ff0000')
         self.launch_in_progress = False
+        
+        # Mettre à jour le timer avec le temps restant
+        if self.remaining_time is not None:
+            self.timer_var.set(str(self.remaining_time))
+        
+        remaining_min = self.remaining_time // 60 if self.remaining_time else 0
+        remaining_sec = self.remaining_time % 60 if self.remaining_time else 0
+        
         messagebox.showinfo(
             "ОТМЕНА УСПЕШНА",
-            "✓ Запуск ракеты успешно отменен!\n\n" +
-            "Система разоружена."
+            f"✓ Запуск ракеты успешно отменен!\n\n" +
+            f"Оставшееся время: {remaining_min} мин {remaining_sec} сек\n\n" +
+            f"Возможен повторный запуск с оставшимся временем."
         )
     
     def show_mission_complete(self):

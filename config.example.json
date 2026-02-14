@@ -5,6 +5,7 @@
     "code_annulation": "999999",
     "admin_password": "admin123",
     "missile_name": "R-73",
-    "missile_timer_default": 1200,
-    "missile_timer_max": 1800
+    "missile_timer_default": 2400,
+    "missile_timer_locked": false,
+    "missile_timer_max": 3600
 }
